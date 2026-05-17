@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  predictive-maintenance:
+    build: .
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount your test data directory (optional)
+      - ./test_data:/app/test_data
+    restart: unless-stopped
