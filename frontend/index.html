@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Predictive Maintenance Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .card h2 {
+            color: #333;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .load-btn {
+            background: #48bb78;
+        }
+        
+        .load-btn:hover {
+            background: #38a169;
+        }
+        
+        .test-case-selector {
+            margin-bottom: 20px;
+        }
+        
+        select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
+        .sensor-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+            padding: 10px;
+            background: #f7f7f7;
+            border-radius: 5px;
+        }
+        
+        .sensor-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 10px;
+            background: white;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        
+        .sensor-label {
+            font-weight: bold;
+            color: #555;
+        }
+        
+        .sensor-value {
+            color: #667eea;
+            font-family: monospace;
+        }
+        
+        .result {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .rul-value {
+            font-size: 48px;
+            font-weight: bold;
+            color: #667eea;
+            margin: 20px 0;
+        }
+        
+        .status {
+            font-size: 24px;
+            padding: 10px;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+        
+        .status.Healthy { background: #c6f6d5; color: #22543d; }
+        .status.Monitor { background: #feebc8; color: #7b341e; }
+        .status.Warning { background: #fed7d7; color: #742a2a; }
+        .status.Critical { background: #feb2b2; color: #742a2a; }
+        
+        .confidence {
+            font-size: 18px;
+            color: #666;
+        }
+        
+        .error-log {
+            margin-top: 20px;
+            padding: 10px;
+            background: #fed7d7;
+            border-radius: 5px;
+            display: none;
+        }
+        
+        .error-log.show {
+            display: block;
+        }
+        
+        @media (max-width: 768px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Predictive Maintenance System</h1>
+        <h1 style="font-size: 1.2em; margin-top: -20px;">ML Based Aircraft Engine RUL Prediction</h1>
+        
+        <div class="main-grid">
+            <!-- Left Panel: Test Data Loader -->
+            <div class="card">
+                <h2>📊 Load Test Data</h2>
+                <div class="controls">
+                    <button onclick="loadFromFile()" class="load-btn">📁 Load Test File (test_FD001.txt)</button>
+                    <button onclick="loadSampleEngine()">🎲 Random Engine</button>
+                </div>
+                <div class="test-case-selector">
+                    <label>Or select specific engine:</label>
+                    <select id="engineSelect" onchange="loadEngine()">
+                        <option value="">-- Select Engine --</option>
+                    </select>
+                </div>
+                <div id="sensorData" class="sensor-grid">
+                    <p style="color: #999; text-align: center;">Load test data to see sensor values</p>
+                </div>
+            </div>
+            
+            <!-- Right Panel: Prediction Results -->
+            <div class="card">
+                <h2>🎯 RUL Prediction</h2>
+                <div class="controls">
+                    <button onclick="predict()">🔮 Predict RUL</button>
+                    <button onclick="clearPrediction()">🗑️ Clear</button>
+                </div>
+                <div id="predictionResult" class="result">
+                    <p style="color: #999;">Click "Predict RUL" to see prediction</p>
+                </div>
+            </div>
+        </div>
+        
+        <div id="errorLog" class="error-log"></div>
+    </div>
+    
+    <script>
+        let currentSample = null;
+        let testData = null;
+        
+        async function loadFromFile() {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.txt';
+            input.onchange = async (e) => {
+                const file = e.target.files[0];
+                const text = await file.text();
+                parseTestData(text);
+            };
+            input.click();
+        }
+        
+        function parseTestData(text) {
+            const lines = text.trim().split('\n');
+            const data = [];
+            
+            lines.forEach(line => {
+                const values = line.trim().split(/\s+/).map(Number);
+                if (values.length >= 26) {
+                    data.push({
+                        unit_nr: values[0],
+                        cycle: values[1],
+                        op_setting_1: values[2],
+                        op_setting_2: values[3],
+                        op_setting_3: values[4],
+                        sensors: values.slice(5)
+                    });
+                }
+            });
+            
+            testData = data;
+            
+            // Populate engine selector
+            const engines = [...new Set(data.map(d => d.unit_nr))];
+            const select = document.getElementById('engineSelect');
+            select.innerHTML = '<option value="">-- Select Engine --</option>';
+            engines.forEach(engine => {
+                select.innerHTML += `<option value="${engine}">Engine ${engine}</option>`;
+            });
+            
+            // Load first engine by default
+            if (engines.length > 0) {
+                select.value = engines[0];
+                loadEngine();
+            }
+            
+            showError(`✅ Loaded ${data.length} records from ${engines.length} engines`, 'success');
+        }
+        
+        function loadEngine() {
+            const engineId = parseInt(document.getElementById('engineSelect').value);
+            if (!testData || !engineId) return;
+            
+            // Get the last cycle for this engine
+            const engineData = testData.filter(d => d.unit_nr === engineId);
+            const lastCycle = Math.max(...engineData.map(d => d.cycle));
+            currentSample = engineData.find(d => d.cycle === lastCycle);
+            
+            displaySensorData(currentSample);
+        }
+        
+        function loadSampleEngine() {
+            if (!testData) {
+                showError('Please load test data first');
+                return;
+            }
+            
+            const engines = [...new Set(testData.map(d => d.unit_nr))];
+            const randomEngine = engines[Math.floor(Math.random() * engines.length)];
+            document.getElementById('engineSelect').value = randomEngine;
+            loadEngine();
+        }
+        
+        function displaySensorData(sample) {
+            const container = document.getElementById('sensorData');
+            container.innerHTML = `
+                <div class="sensor-item">
+                    <span class="sensor-label">Engine:</span>
+                    <span class="sensor-value">${sample.unit_nr}</span>
+                </div>
+                <div class="sensor-item">
+                    <span class="sensor-label">Cycle:</span>
+                    <span class="sensor-value">${sample.cycle}</span>
+                </div>
+                <div class="sensor-item">
+                    <span class="sensor-label">OP Setting 1:</span>
+                    <span class="sensor-value">${sample.op_setting_1.toFixed(4)}</span>
+                </div>
+                <div class="sensor-item">
+                    <span class="sensor-label">OP Setting 2:</span>
+                    <span class="sensor-value">${sample.op_setting_2.toFixed(4)}</span>
+                </div>
+                <div class="sensor-item">
+                    <span class="sensor-label">OP Setting 3:</span>
+                    <span class="sensor-value">${sample.op_setting_3.toFixed(1)}</span>
+                </div>
+            `;
+            
+            // Add sensors
+            for (let i = 0; i < sample.sensors.length; i++) {
+                container.innerHTML += `
+                    <div class="sensor-item">
+                        <span class="sensor-label">Sensor ${i+1}:</span>
+                        <span class="sensor-value">${sample.sensors[i].toFixed(2)}</span>
+                    </div>
+                `;
+            }
+        }
+        
+        async function predict() {
+            if (!currentSample) {
+                showError('No test data loaded. Please load test_FD001.txt first');
+                return;
+            }
+            
+            const payload = {
+                cycle: currentSample.cycle,
+                op_setting_1: currentSample.op_setting_1,
+                op_setting_2: currentSample.op_setting_2,
+                op_setting_3: currentSample.op_setting_3
+            };
+            
+            // Add sensors
+            for (let i = 0; i < currentSample.sensors.length; i++) {
+                payload[`sensor_${i+1}`] = currentSample.sensors[i];
+            }
+            
+            try {
+                const response = await fetch('http://localhost:8000/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    displayPrediction(result);
+                } else {
+                    showError(`Prediction error: ${result.detail}`);
+                }
+            } catch (error) {
+                showError(`Network error: ${error.message}`);
+            }
+        }
+        
+        function displayPrediction(result) {
+            const container = document.getElementById('predictionResult');
+            container.innerHTML = `
+                <div class="rul-value">${result.rul} cycles</div>
+                <div class="status ${result.status}">Status: ${result.status}</div>
+                <div class="confidence">Confidence: ${result.confidence}</div>
+                <div style="margin-top: 20px; font-size: 14px; color: #666;">
+                    ⏱️ Remaining Useful Life: ${result.rul} operational cycles
+                </div>
+            `;
+        }
+        
+        function clearPrediction() {
+            document.getElementById('predictionResult').innerHTML = `
+                <p style="color: #999;">Click "Predict RUL" to see prediction</p>
+            `;
+        }
+        
+        function showError(message, type = 'error') {
+            const errorDiv = document.getElementById('errorLog');
+            errorDiv.textContent = message;
+            errorDiv.classList.add('show');
+            if (type === 'success') {
+                errorDiv.style.background = '#c6f6d5';
+                errorDiv.style.color = '#22543d';
+            } else {
+                errorDiv.style.background = '#fed7d7';
+                errorDiv.style.color = '#742a2a';
+            }
+            setTimeout(() => {
+                errorDiv.classList.remove('show');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
