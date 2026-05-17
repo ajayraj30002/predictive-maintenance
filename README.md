@@ -13,23 +13,6 @@
 
 </div>
 
-## 📋 Table of Contents
-
-- [Overview](#-overview)
-- [Key Features](#-key-features)
-- [Performance Metrics](#-performance-metrics)
-- [Architecture](#-architecture)
-- [Tech Stack](#-tech-stack)
-- [Quick Start](#-quick-start)
-- [API Documentation](#-api-documentation)
-- [Model Training](#-model-training)
-- [Project Structure](#-project-structure)
-- [Screenshots](#-screenshots)
-- [What I Learned](#-what-i-learned)
-- [Future Improvements](#-future-improvements)
-- [Troubleshooting](#-troubleshooting)
-- [References](#-references)
-- [Connect with Me](#-connect-with-me)
 
 ## 🎯 Overview
 
