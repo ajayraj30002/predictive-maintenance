@@ -56,7 +56,8 @@ A Random Forest model that analyzes **10 key sensor readings** (out of 21) and o
 
 ---
 ## 🏗️ Architecture
-```
+
+```mermaid
 flowchart TB
     subgraph User["User Layer"]
         Browser["🌐 Browser"]
