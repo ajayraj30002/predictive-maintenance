@@ -56,7 +56,7 @@ A Random Forest model that analyzes **10 key sensor readings** (out of 21) and o
 
 ---
 ## 🏗️ Architecture
-
+```
 flowchart TB
     subgraph User["User Layer"]
         Browser["🌐 Browser"]
@@ -114,7 +114,7 @@ flowchart TB
     Docker -.->|"Contains"| Server
     Docker -.->|"Contains"| Model
     Render -.->|"Deploys"| Docker
-
+```
 
 ## 🧠 Model Training Pipeline
 ```
@@ -177,6 +177,7 @@ graph TD
     F2 --> I1
     E1 --> I2
     C2 --> I3
+```
 ---
   
 ## 📊 Performance Metrics
