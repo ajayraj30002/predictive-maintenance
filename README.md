@@ -297,13 +297,18 @@ graph TD
 ```bash
 # Clone repository
 git clone https://github.com/ajsyraj3002/predictive-maintenance.git
+```
+```bash
 cd predictive-maintenance
-
+```
+```bash
 # Build and run
 docker build -t ajsyraj3002/predictive-maintenance:latest .
+```
+```bash
 docker run -p 8000:8000 ajsyraj3002/predictive-maintenance:latest
+```
 
 # Open browser
 http://localhost:8000/frontend
 
-## 🏗️ Architecture
