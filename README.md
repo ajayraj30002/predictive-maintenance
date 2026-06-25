@@ -118,7 +118,7 @@ flowchart TB
 ```
 
 ## 🧠 Model Training Pipeline
-```
+```mermaid
 graph TD
     subgraph Step1["Step 1: Data Loading"]
         A1["📥 Load CMAPSS Data<br/>pd.read_csv()"]
