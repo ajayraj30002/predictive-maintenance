@@ -297,7 +297,7 @@ graph TD
 
 # Clone repository
 ```bash
-git clone https://github.com/ajsyraj3002/predictive-maintenance.git
+git clone https://github.com/ajayraj3002/predictive-maintenance.git
 ```
 ```bash
 cd predictive-maintenance
@@ -305,10 +305,10 @@ cd predictive-maintenance
 
 # Build and run
 ```bash
-docker build -t ajsyraj3002/predictive-maintenance:latest .
+docker build -t ajayraj3002/predictive-maintenance:latest .
 ```
 ```bash
-docker run -p 8000:8000 ajsyraj3002/predictive-maintenance:latest
+docker run -p 8000:8000 ajayraj3002/predictive-maintenance:latest
 ```
 
 # Open browser
