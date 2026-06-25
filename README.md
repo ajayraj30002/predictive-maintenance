@@ -294,15 +294,17 @@ graph TD
 
 ### Option 1: Docker (Recommended)
 
-```bash
+
 # Clone repository
+```bash
 git clone https://github.com/ajsyraj3002/predictive-maintenance.git
 ```
 ```bash
 cd predictive-maintenance
 ```
-```bash
+
 # Build and run
+```bash
 docker build -t ajsyraj3002/predictive-maintenance:latest .
 ```
 ```bash
