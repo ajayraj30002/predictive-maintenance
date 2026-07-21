@@ -221,9 +221,10 @@ MLflow is integrated into the MLOps pipeline for **experiment tracking, model ve
 
 The MLflow UI provides a centralized dashboard for monitoring all training runs, comparing metrics, and managing model versions.
 
-
-
 *MLflow UI showing experiment runs, metrics comparison, and model version history*
+
+<img src="assets/MLflow_ui_1.png" alt="MLflow Dashboard" width="800">
+<img src="assets/MLflow_ui_2.png" alt="MLflow Dashboard" width="800">
 
 ### Model Registry
 
