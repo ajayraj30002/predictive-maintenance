@@ -1,18 +1,16 @@
-FROM python:3.10-slim
+FROM python:3.9-slim
 
 WORKDIR /app
 
-# Copy requirements first for better caching
+# Copy requirements first (for better caching)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY app.py .
-COPY frontend ./frontend
-COPY artifacts ./artifacts
+COPY frontend/ ./frontend/
+COPY artifacts/ ./artifacts/
 
-# Expose port
 EXPOSE 8000
 
-# Run the application
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8000"]
