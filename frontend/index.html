@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Predictive Maintenance Dashboard</title>
+    
+    <!-- Load config FIRST - this sets window.ENV -->
+    <script src="/config.js"></script>
+    
     <style>
         * {
             margin: 0;
@@ -54,6 +58,7 @@
             display: flex;
             gap: 10px;
             margin-bottom: 20px;
+            flex-wrap: wrap;
         }
         
         button {
@@ -158,13 +163,37 @@
         .error-log {
             margin-top: 20px;
             padding: 10px;
-            background: #fed7d7;
             border-radius: 5px;
             display: none;
         }
         
         .error-log.show {
             display: block;
+        }
+        
+        .error-log.error {
+            background: #fed7d7;
+            color: #742a2a;
+        }
+        
+        .error-log.success {
+            background: #c6f6d5;
+            color: #22543d;
+        }
+        
+        .api-status {
+            font-size: 12px;
+            color: #999;
+            margin-top: 10px;
+            text-align: center;
+        }
+        
+        .api-status.connected {
+            color: #48bb78;
+        }
+        
+        .api-status.disconnected {
+            color: #f56565;
         }
         
         @media (max-width: 768px) {
@@ -212,11 +241,55 @@
         </div>
         
         <div id="errorLog" class="error-log"></div>
+        
+        <!-- API Status -->
+        <div id="apiStatus" class="api-status">🔄 Checking API connection...</div>
     </div>
     
     <script>
+        // ============================================
+        // CONFIGURATION - Reads from config.js
+        // ============================================
+        
+        const API_URL = window.ENV?.API_URL || 'http://localhost:8000';
+        console.log(`📡 API URL: ${API_URL}`);
+        
+        // ============================================
+        // GLOBAL VARIABLES
+        // ============================================
+        
         let currentSample = null;
         let testData = null;
+        
+        // ============================================
+        // API CONNECTION CHECK
+        // ============================================
+        
+        async function checkAPI() {
+            const statusEl = document.getElementById('apiStatus');
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                if (response.ok) {
+                    statusEl.textContent = `✅ API Connected: ${API_URL}`;
+                    statusEl.className = 'api-status connected';
+                } else {
+                    statusEl.textContent = `⚠️ API Warning: ${API_URL}`;
+                    statusEl.className = 'api-status disconnected';
+                }
+            } catch (error) {
+                statusEl.textContent = `❌ API Not Reachable: ${API_URL}`;
+                statusEl.className = 'api-status disconnected';
+            }
+        }
+        
+        // Check API on page load
+        window.onload = function() {
+            checkAPI();
+        };
+        
+        // ============================================
+        // CORE FUNCTIONS
+        // ============================================
         
         async function loadFromFile() {
             const input = document.createElement('input');
@@ -327,6 +400,10 @@
             }
         }
         
+        // ============================================
+        // PREDICTION FUNCTION
+        // ============================================
+        
         async function predict() {
             if (!currentSample) {
                 showError('No test data loaded. Please load test_FD001.txt first');
@@ -345,8 +422,12 @@
                 payload[`sensor_${i+1}`] = currentSample.sensors[i];
             }
             
+            // Show loading state
+            const container = document.getElementById('predictionResult');
+            container.innerHTML = '<p style="color: #999;">⏳ Predicting...</p>';
+            
             try {
-                const response = await fetch('http://localhost:8000/predict', {
+                const response = await fetch(`${API_URL}/predict`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)
@@ -357,10 +438,12 @@
                 if (response.ok) {
                     displayPrediction(result);
                 } else {
-                    showError(`Prediction error: ${result.detail}`);
+                    showError(`Prediction error: ${result.detail || 'Unknown error'}`);
+                    container.innerHTML = '<p style="color: #999;">Click "Predict RUL" to see prediction</p>';
                 }
             } catch (error) {
-                showError(`Network error: ${error.message}`);
+                showError(`Network error: ${error.message}. Make sure the API is running.`);
+                container.innerHTML = '<p style="color: #999;">Click "Predict RUL" to see prediction</p>';
             }
         }
         
@@ -382,20 +465,17 @@
             `;
         }
         
+        // ============================================
+        // ERROR HANDLING
+        // ============================================
+        
         function showError(message, type = 'error') {
             const errorDiv = document.getElementById('errorLog');
             errorDiv.textContent = message;
-            errorDiv.classList.add('show');
-            if (type === 'success') {
-                errorDiv.style.background = '#c6f6d5';
-                errorDiv.style.color = '#22543d';
-            } else {
-                errorDiv.style.background = '#fed7d7';
-                errorDiv.style.color = '#742a2a';
-            }
+            errorDiv.className = 'error-log show ' + type;
             setTimeout(() => {
                 errorDiv.classList.remove('show');
-            }, 3000);
+            }, 5000);
         }
     </script>
 </body>
