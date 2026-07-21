@@ -213,6 +213,27 @@ graph TD
 
 ---
 
+## 📊 MLflow Integration - Model Tracking & Monitoring
+
+MLflow is integrated into the MLOps pipeline for **experiment tracking, model versioning, and production model serving**. This ensures full reproducibility and seamless model updates without application redeployment.
+
+### Experiment Tracking Dashboard
+
+The MLflow UI provides a centralized dashboard for monitoring all training runs, comparing metrics, and managing model versions.
+
+
+
+*MLflow UI showing experiment runs, metrics comparison, and model version history*
+
+### Model Registry
+
+Models are promoted through stages:
+
+- **Production**: Currently deployed model (loaded by FastAPI)
+- **Staging**: Model under validation
+- **Archived**: Deprecated model versions
+
+  
 ## 🏆 Why This Approach?
 
 ### Advantages Over Deep Learning
