@@ -1,4 +1,4 @@
-# app.py - Complete Backend API
+# app.py - MLflow Version (Loads model from MLflow Server)
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
@@ -8,7 +8,18 @@ import pandas as pd
 import joblib
 import json
 import os
+import warnings
 from typing import List, Dict
+
+# Suppress warnings
+warnings.filterwarnings('ignore')
+
+# ============================================
+# MLFLOW IMPORTS
+# ============================================
+import mlflow
+import mlflow.sklearn
+from mlflow.tracking import MlflowClient
 
 app = FastAPI(title="CMAPSS Predictive Maintenance API")
 
@@ -21,31 +32,88 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Global variables for model artifacts
+# ============================================
+# GLOBAL VARIABLES
+# ============================================
 model = None
 scaler = None
 feature_names = None
-max_rul = None
+max_rul = 125
 
-# Load artifacts on startup
+# ============================================
+# MLFLOW CONFIGURATION (from environment)
+# ============================================
+MLFLOW_TRACKING_URI = os.getenv("MLFLOW_TRACKING_URI")
+MLFLOW_USERNAME = os.getenv("MLFLOW_TRACKING_USERNAME")
+MLFLOW_PASSWORD = os.getenv("MLFLOW_TRACKING_PASSWORD")
+MODEL_NAME = os.getenv("MODEL_NAME", "predictive_maintenance_model")
+MODEL_STAGE = os.getenv("MODEL_STAGE", "Production")
+
+# ============================================
+# LOAD ARTIFACTS ON STARTUP
+# ============================================
 @app.on_event("startup")
 async def load_artifacts():
     global model, scaler, feature_names, max_rul
     
-    # Load model and scaler
-    model = joblib.load('artifacts/rul_model.joblib')
-    scaler = joblib.load('artifacts/feature_scaler.joblib')
+    print("="*60)
+    print("🚀 STARTING PREDICTIVE MAINTENANCE API (MLflow)")
+    print("="*60)
     
-    # Load config
-    with open('artifacts/model_config.json', 'r') as f:
-        config = json.load(f)
-        feature_names = config['feature_names']
-        max_rul = config.get('max_rul', 125)
+    # Step 1: Configure MLflow
+    print(f"📊 MLflow Tracking URI: {MLFLOW_TRACKING_URI}")
+    mlflow.set_tracking_uri(MLFLOW_TRACKING_URI)
     
-    print(f"✅ Model loaded. Expects {len(feature_names)} features")
-    print(f"✅ Features: {feature_names[:5]}...")
+    # Set credentials for DagsHub
+    if MLFLOW_USERNAME and MLFLOW_PASSWORD:
+        os.environ["MLFLOW_TRACKING_USERNAME"] = MLFLOW_USERNAME
+        os.environ["MLFLOW_TRACKING_PASSWORD"] = MLFLOW_PASSWORD
+        print("✅ MLflow credentials configured")
+    
+    # Step 2: Load model from MLflow
+    try:
+        model_uri = f"models:/{MODEL_NAME}/{MODEL_STAGE}"
+        print(f"📥 Loading model from: {model_uri}")
+        model = mlflow.sklearn.load_model(model_uri)
+        print("✅ Model loaded successfully from MLflow")
+    except Exception as e:
+        print(f"❌ Failed to load model from MLflow: {e}")
+        print("   Make sure you've logged the model to MLflow first!")
+        print("   Trying to load from local artifacts as fallback...")
+        try:
+            model = joblib.load('artifacts/rul_model.joblib')
+            print("✅ Model loaded from local artifacts (fallback)")
+        except:
+            raise e
+    
+    # Step 3: Load scaler and config from local files
+    try:
+        scaler = joblib.load('artifacts/feature_scaler.joblib')
+        print("✅ Scaler loaded from artifacts/")
+    except Exception as e:
+        print(f"⚠️ Scaler not found: {e}")
+        scaler = None
+    
+    try:
+        with open('artifacts/model_config.json', 'r') as f:
+            config = json.load(f)
+            feature_names = config.get('feature_names', [])
+            max_rul = config.get('max_rul', 125)
+        print(f"✅ Config loaded: {len(feature_names)} features")
+    except Exception as e:
+        print(f"⚠️ Config not found: {e}")
+        feature_names = ['cycle', 'op_setting_1', 'op_setting_2', 'op_setting_3',
+                         'sensor_9', 'sensor_14', 'sensor_4', 'sensor_3', 
+                         'sensor_17', 'sensor_7', 'sensor_12', 'sensor_2', 
+                         'sensor_11', 'sensor_20']
+    
+    print("="*60)
+    print("✅ API READY!")
+    print("="*60)
 
-# Request/Response models
+# ============================================
+# REQUEST/RESPONSE MODELS
+# ============================================
 class SensorData(BaseModel):
     cycle: int
     op_setting_1: float
@@ -78,14 +146,41 @@ class PredictionResponse(BaseModel):
     status: str
     confidence: str
 
+# ============================================
+# ROUTES
+# ============================================
+
 @app.get("/")
 async def root():
-    return {"message": "CMAPSS Predictive Maintenance API", "status": "running"}
+    return {
+        "message": "CMAPSS Predictive Maintenance API",
+        "status": "running",
+        "model_source": "MLflow" if model else "Not loaded"
+    }
 
 @app.get("/features")
 async def get_features():
     """Return the list of features the model expects"""
     return {"feature_names": feature_names, "num_features": len(feature_names)}
+
+@app.get("/model-info")
+async def get_model_info():
+    """Return model information from MLflow"""
+    try:
+        client = MlflowClient()
+        model_version = client.get_latest_versions(MODEL_NAME, stages=[MODEL_STAGE])
+        if model_version:
+            v = model_version[0]
+            return {
+                "model_name": MODEL_NAME,
+                "stage": MODEL_STAGE,
+                "version": v.version,
+                "run_id": v.run_id,
+                "status": v.status
+            }
+        return {"message": "No model version found"}
+    except:
+        return {"message": "MLflow info not available"}
 
 @app.post("/predict", response_model=PredictionResponse)
 async def predict(data: SensorData):
@@ -96,7 +191,10 @@ async def predict(data: SensorData):
         feature_array = np.array([[feature_dict[feat] for feat in feature_names]])
         
         # Scale features
-        features_scaled = scaler.transform(feature_array)
+        if scaler is not None:
+            features_scaled = scaler.transform(feature_array)
+        else:
+            features_scaled = feature_array
         
         # Predict
         rul = model.predict(features_scaled)[0]
@@ -142,7 +240,7 @@ async def predict_batch(file: UploadFile = File(...)):
         
         # Predict for all rows
         X = df[feature_names].values
-        X_scaled = scaler.transform(X)
+        X_scaled = scaler.transform(X) if scaler else X
         predictions = model.predict(X_scaled)
         predictions = np.clip(predictions, 0, max_rul)
         
@@ -163,3 +261,18 @@ async def predict_batch(file: UploadFile = File(...)):
 @app.get("/frontend")
 async def serve_frontend():
     return FileResponse("frontend/index.html")
+
+# Health check with model info
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "model_loaded": model is not None,
+        "model_source": "MLflow" if model else "None",
+        "features": len(feature_names) if feature_names else 0
+    }
+
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.getenv("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
