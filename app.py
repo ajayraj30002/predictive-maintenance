@@ -1,7 +1,7 @@
 # app.py - MLflow Version (Loads model from MLflow Server)
 from fastapi import FastAPI, HTTPException, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel
 import numpy as np
 import pandas as pd
@@ -48,6 +48,16 @@ MLFLOW_USERNAME = os.getenv("MLFLOW_TRACKING_USERNAME")
 MLFLOW_PASSWORD = os.getenv("MLFLOW_TRACKING_PASSWORD")
 MODEL_NAME = os.getenv("MODEL_NAME", "predictive_maintenance_model")
 MODEL_STAGE = os.getenv("MODEL_STAGE", "Production")
+
+# ============================================
+# CONFIG ENDPOINT FOR FRONTEND
+# ============================================
+@app.get("/config.js")
+async def serve_config():
+    """Serve config.js with environment variables injected"""
+    api_url = os.getenv("API_URL", "https://predictive-maintenance-latest.onrender.com")
+    content = f'window.ENV = {{ "API_URL": "{api_url}" }};'
+    return Response(content, media_type="application/javascript")
 
 # ============================================
 # LOAD ARTIFACTS ON STARTUP
